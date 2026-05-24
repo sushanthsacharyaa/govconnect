@@ -1,0 +1,308 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}Dashboard - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block heading %}Welcome back, {{ user.get_full_name|default:user.username }}!{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- My Bids Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-gavel"></i> My Recent Bids
+                <a href="/my-bids/" class="float-end text-decoration-none btn btn-sm btn-link">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Auction</th>
+                                <th>Bid Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bidsTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    Loading bids...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- My Grievances Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-comment-alt"></i> My Recent Grievances
+                <button class="float-end btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#grievanceModal">
+                    <i class="fas fa-plus"></i> New Grievance
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Response</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grievancesTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">Loading grievances...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- User Stats Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-chart-line"></i> Your Statistics
+            </div>
+            <div class="card-body" id="statsContent">
+                <div class="text-center">Loading stats...</div>
+            </div>
+        </div>
+        
+        <!-- Notifications -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-bell"></i> Recent Notifications
+                <button class="float-end btn btn-sm btn-link mark-all-read">Mark all read</button>
+            </div>
+            <div class="card-body" id="notificationsList" style="max-height: 400px; overflow-y: auto;">
+                <div class="text-center">Loading notifications...</div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-cog"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <button class="btn btn-outline-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#profileModal">
+                    <i class="fas fa-user-edit"></i> Update Profile
+                </button>
+                <button class="btn btn-outline-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#documentsModal">
+                    <i class="fas fa-file-alt"></i> My Documents
+                </button>
+                <button class="btn btn-outline-warning w-100" data-bs-toggle="modal" data-bs-target="#grievanceModal">
+                    <i class="fas fa-comment-alt"></i> Submit Grievance
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith('csrftoken=')) {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 2
+    }).format(amount);
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function loadMyBids() {
+    fetch('/api/my-bids/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('bidsTableBody');
+        if (data.results && data.results.length > 0) {
+            tbody.innerHTML = '';
+            data.results.slice(0, 5).forEach(bid => {
+                const row = tbody.insertRow();
+                row.className = bid.bid_status === 'WINNING' ? 'table-success' : '';
+                row.innerHTML = `
+                    <td><a href="/auctions/${bid.auction}/">${bid.auction_title}</a></td>
+                    <td class="fw-bold ${bid.bid_status === 'WINNING' ? 'text-success' : 'text-danger'}">${formatCurrency(parseFloat(bid.bid_amount))}</td>
+                    <td><span class="badge ${bid.bid_status === 'WINNING' ? 'bg-success' : 'bg-secondary'}">${bid.status_display}</span></td>
+                    <td>${formatDate(bid.submitted_at)}</td>
+                `;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No bids placed yet</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading bids:', error);
+        document.getElementById('bidsTableBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading bids</td></tr>';
+    });
+}
+
+function loadStats() {
+    fetch('/api/dashboard/stats/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const statsHtml = `
+            <div class="mb-3"><strong>Total Bids:</strong> <span class="float-end">${data.my_bids || 0}</span></div>
+            <div class="mb-3"><strong>Winning Bids:</strong> <span class="float-end text-success">${data.winning_bids || 0}</span></div>
+            <div class="mb-3"><strong>Total Spent:</strong> <span class="float-end">${formatCurrency(data.total_spent || 0)}</span></div>
+            <div class="mb-3"><strong>Active Bids:</strong> <span class="float-end">${data.active_bids || 0}</span></div>
+        `;
+        document.getElementById('statsContent').innerHTML = statsHtml;
+    })
+    .catch(error => {
+        console.error('Error loading stats:', error);
+        document.getElementById('statsContent').innerHTML = '<div class="text-center text-danger">Error loading stats</div>';
+    });
+}
+
+function loadNotifications() {
+    fetch('/api/notifications/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('notificationsList');
+        if (data.results && data.results.length > 0) {
+            container.innerHTML = '';
+            data.results.slice(0, 10).forEach(notification => {
+                const notifDiv = document.createElement('div');
+                notifDiv.className = `notification-item mb-2 pb-2 border-bottom ${!notification.is_read ? 'bg-light p-2 rounded' : ''}`;
+                notifDiv.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <strong>${notification.title}</strong>
+                        <small class="text-muted">${new Date(notification.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <p class="small mb-1">${notification.message}</p>
+                    ${!notification.is_read ? '<button class="btn btn-sm btn-outline-primary mark-read-btn" data-id="' + notification.id + '">Mark as read</button>' : ''}
+                `;
+                container.appendChild(notifDiv);
+            });
+        } else {
+            container.innerHTML = '<div class="text-center text-muted">No notifications</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading notifications:', error);
+        document.getElementById('notificationsList').innerHTML = '<div class="text-center text-danger">Error loading notifications</div>';
+    });
+}
+
+function loadGrievances() {
+    fetch('/api/grievances/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('grievancesTableBody');
+        if (data.results && data.results.length > 0) {
+            tbody.innerHTML = '';
+            data.results.slice(0, 5).forEach(grievance => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td><strong>${grievance.subject}</strong><br><small class="text-muted">${grievance.description.substring(0, 50)}...</small></td>
+                    <td><span class="badge ${grievance.status === 'OPEN' ? 'bg-danger' : (grievance.status === 'IN_PROGRESS' ? 'bg-warning' : 'bg-success')}">${grievance.status_display}</span></td>
+                    <td>${formatDate(grievance.created_at)}</td>
+                    <td><small>${grievance.resolution_remarks || 'Pending'}</small></td>
+                `;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No grievances filed</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading grievances:', error);
+        document.getElementById('grievancesTableBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading grievances</td></tr>';
+    });
+}
+
+function markNotificationRead(notificationId) {
+    fetch('/api/notifications/mark-read/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ notification_ids: [notificationId] })
+    })
+    .then(response => response.ok ? loadNotifications() : null)
+    .catch(error => console.error('Error:', error));
+}
+
+function markAllRead() {
+    fetch('/api/notifications/mark-read/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ mark_all: true })
+    })
+    .then(response => response.ok ? loadNotifications() : null)
+    .catch(error => console.error('Error:', error));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadMyBids();
+    loadStats();
+    loadNotifications();
+    loadGrievances();
+    
+    document.querySelector('.mark-all-read')?.addEventListener('click', markAllRead);
+    document.getElementById('notificationsList')?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('mark-read-btn')) {
+            const id = e.target.getAttribute('data-id');
+            markNotificationRead(id);
+        }
+    });
+});
+
+setInterval(loadMyBids, 30000);
+setInterval(loadNotifications, 30000);
+</script>
+{% endblock %}

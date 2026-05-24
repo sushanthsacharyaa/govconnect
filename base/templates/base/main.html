@@ -1,0 +1,578 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GovConnect - Government Land & Tender Management System">
+    <meta name="keywords" content="government, land, tender, auction, bidding">
+    <meta name="author" content="GovConnect">
+    <meta name="csrf-token" content="{{ csrf_token }}">  <!-- ADD THIS LINE -->
+    
+    <title>{% block title %}GovConnect - Government Land & Tender Management{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px 0;
+            margin-top: 70px;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+            border: none;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        .card-footer {
+            background: transparent;
+            border-top: 1px solid #e0e0e0;
+            padding: 15px 20px;
+        }
+        
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loader.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9998;
+        }
+        
+        .toast {
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* Alerts */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        /* Badges */
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-success, .badge-open {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-danger, .badge-closed {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge-warning, .badge-live {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .badge-info, .badge-upcoming {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            background: transparent;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        
+        .breadcrumb-item a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item.active {
+            color: #6c757d;
+        }
+        
+        /* Pagination */
+        .pagination {
+            justify-content: center;
+            margin-top: 30px;
+            gap: 8px;
+        }
+        
+        .page-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #667eea;
+            text-decoration: none;
+            border: 1px solid #e0e0e0;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .page-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .page-item.active .page-link {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        
+        /* Forms */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            outline: none;
+        }
+        
+        /* Tables */
+        .table {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .table thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-top: 60px;
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 0 15px;
+            }
+            
+            .card-header {
+                font-size: 1rem;
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            h1, .h1 {
+                font-size: 1.5rem;
+            }
+            
+            h2, .h2 {
+                font-size: 1.3rem;
+            }
+        }
+        
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px 0 20px;
+            margin-top: auto;
+        }
+        
+        footer a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        footer a:hover {
+            color: white;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container"></div>
+    
+    <!-- Navigation Bar -->
+    {% include 'base/nav.html' %}
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Breadcrumb -->
+            {% block breadcrumb %}
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Home</a></li>
+                    {% block breadcrumb_items %}{% endblock %}
+                </ol>
+            </nav>
+            {% endblock %}
+            
+            <!-- Page Header -->
+            {% block page_header %}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">{% block heading %}Welcome to GovConnect{% endblock %}</h1>
+                {% block header_actions %}{% endblock %}
+            </div>
+            {% endblock %}
+            
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Main Content Block -->
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <h5><i class="fas fa-landmark me-2"></i>GovConnect</h5>
+                    <p>Government Land & Tender Management System</p>
+                    <p><small>&copy; 2025 GovConnect. All rights reserved.</small></p>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/tenders/"><i class="fas fa-file-signature"></i> Tenders</a></li>
+                        <li><a href="/auctions/"><i class="fas fa-gavel"></i> Auctions</a></li>
+                        <li><a href="/lands/"><i class="fas fa-map-marked-alt"></i> Land Records</a></li>
+                        <li><a href="/dashboard/"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <h5>Contact Us</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-envelope"></i> support@govconnect.com</li>
+                        <li><i class="fas fa-phone"></i> +91 1234567890</li>
+                        <li><i class="fas fa-map-marker-alt"></i> New Delhi, India</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="bg-light">
+            <div class="text-center">
+                <small>Built with <i class="fas fa-heart text-danger"></i> for Government Services</small>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Function to get CSRF token from cookies
+        function getCsrfToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Show loader
+        function showLoader() {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.classList.add('active');
+            }
+        }
+        
+        // Hide loader
+        function hideLoader() {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.classList.remove('active');
+            }
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toastContainer = document.querySelector('.toast-container');
+            if (!toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                        type === 'danger' ? 'fa-exclamation-circle' : 
+                        'fa-info-circle';
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+            
+            // Bootstrap toast initialization
+            const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+            bsToast.show();
+        }
+        
+        // AJAX setup for CSRF token
+        $.ajaxSetup({
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        
+        // Global AJAX handlers
+        $(document).ajaxStart(function() {
+            showLoader();
+        }).ajaxStop(function() {
+            hideLoader();
+        }).ajaxError(function(event, xhr, settings, error) {
+            hideLoader();
+            if (xhr.status === 401) {
+                showToast('Session expired. Please login again.', 'warning');
+                setTimeout(() => {
+                    window.location.href = '/login/';
+                }, 2000);
+            } else if (xhr.status === 403) {
+                showToast('You don\'t have permission to perform this action.', 'danger');
+            } else if (xhr.status === 500) {
+                showToast('Server error. Please try again later.', 'danger');
+            }
+        });
+        
+        // Auto-hide alerts after 5 seconds
+        $(document).ready(function() {
+            setTimeout(function() {
+                $('.alert').fadeOut('slow', function() {
+                    $(this).remove();
+                });
+            }, 5000);
+        });
+        
+        // Function to format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2
+            }).format(amount);
+        }
+        
+        // Function to format date
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('en-IN', options);
+        }
+        
+        // Function to format datetime
+        function formatDateTime(dateString) {
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return new Date(dateString).toLocaleDateString('en-IN', options);
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

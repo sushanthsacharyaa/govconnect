@@ -1,0 +1,284 @@
+<!-- base/templates/base/login.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GovConnect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            animation: fadeInUp 0.6s ease;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h3 {
+            color: #333;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-control {
+            border-radius: 10px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            width: 100%;
+            border: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .demo-credentials {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .demo-credentials h6 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .demo-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 5px;
+        }
+        .demo-item:hover {
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fas fa-landmark fa-3x" style="color: #667eea;"></i>
+                <h3 class="mt-3">Welcome to GovConnect</h3>
+                <p class="text-muted">Please login to your account</p>
+            </div>
+            
+            <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+            <div id="successAlert" class="alert alert-success d-none" role="alert"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="remember">
+                    <label class="form-check-label" for="remember">Remember me</label>
+                </div>
+                
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </button>
+            </form>
+            
+            <div class="demo-credentials">
+                <h6 class="text-center"><i class="fas fa-info-circle"></i> Demo Credentials</h6>
+                <div class="row text-center">
+                    <div class="col-md-6 demo-item" onclick="fillCredentials('admin', 'admin123')">
+                        <strong>Admin:</strong><br>
+                        username: admin<br>
+                        password: admin123
+                    </div>
+                    <div class="col-md-6 demo-item" onclick="fillCredentials('bidder1', 'bidder123')">
+                        <strong>Bidder:</strong><br>
+                        username: bidder1<br>
+                        password: bidder123
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+                <small class="text-muted">Don't have an account? </small>
+                <a href="/register/">Register here</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function fillCredentials(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+        }
+        
+        function getCsrfToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for logout success message
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('logout') === 'success') {
+                const successAlert = document.getElementById('successAlert');
+                successAlert.classList.remove('d-none');
+                successAlert.innerHTML = '<i class="fas fa-check-circle me-2"></i>You have been logged out successfully.';
+                setTimeout(() => {
+                    successAlert.classList.add('d-none');
+                }, 5000);
+            }
+            
+            // Check for registration success
+            if (urlParams.get('registered') === 'success') {
+                const successAlert = document.getElementById('successAlert');
+                successAlert.classList.remove('d-none');
+                successAlert.innerHTML = '<i class="fas fa-check-circle me-2"></i>Registration successful! Please login.';
+                setTimeout(() => {
+                    successAlert.classList.add('d-none');
+                }, 5000);
+            }
+            
+            // Handle login form submission
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const remember = document.getElementById('remember').checked;
+                
+                if (!username || !password) {
+                    const errorAlert = document.getElementById('errorAlert');
+                    errorAlert.classList.remove('d-none');
+                    errorAlert.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Please enter both username and password';
+                    return;
+                }
+                
+                // Hide previous alerts
+                document.getElementById('errorAlert').classList.add('d-none');
+                document.getElementById('successAlert').classList.add('d-none');
+                
+                const loginBtn = document.getElementById('loginBtn');
+                const originalText = loginBtn.innerHTML;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Logging in...';
+                loginBtn.disabled = true;
+                
+                // Make POST request to API endpoint
+                fetch('/api/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                })
+                .then(response => response.json().then(data => ({ status: response.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status === 200) {
+                        if (remember) {
+                            localStorage.setItem('user', JSON.stringify(body.user));
+                        }
+                        
+                        const successAlert = document.getElementById('successAlert');
+                        successAlert.classList.remove('d-none');
+                        successAlert.innerHTML = '<i class="fas fa-check-circle me-2"></i>Login successful! Redirecting...';
+                        
+                        setTimeout(() => {
+                            if (body.role === 'PUBLIC_VIEWER') {
+                                window.location.href = '/';
+                            } else {
+                                window.location.href = '/dashboard/';
+                            }
+                        }, 1000);
+                    } else {
+                        throw new Error(body.error || 'Login failed');
+                    }
+                })
+                .catch(error => {
+                    loginBtn.innerHTML = originalText;
+                    loginBtn.disabled = false;
+                    
+                    const errorAlert = document.getElementById('errorAlert');
+                    errorAlert.classList.remove('d-none');
+                    errorAlert.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + error.message;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

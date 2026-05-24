@@ -1,0 +1,351 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}{{ auction.auction_title }} - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'auction-list-web' %}">Auctions</a></li>
+<li class="breadcrumb-item active">{{ auction.auction_title|truncatechars:50 }}</li>
+{% endblock %}
+
+{% block heading %}{{ auction.auction_title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Auction Details -->
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-info-circle"></i> Auction Details</div>
+            <div class="card-body">
+                {% if auction.land.land_image %}
+                <img src="{{ auction.land.land_image.url }}" class="img-fluid rounded mb-3" alt="{{ auction.land.land_title }}">
+                {% endif %}
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Land Title:</strong><br>{{ auction.land.land_title }}</div>
+                    <div class="col-md-6"><strong>Survey Number:</strong><br>{{ auction.land.survey_number }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><strong>Total Area:</strong><br>{{ auction.land.total_area }} {{ auction.land.area_unit }}</div>
+                    <div class="col-md-6"><strong>Location:</strong><br>{{ auction.land.location }}, {{ auction.land.district }}</div>
+                </div>
+                <div class="mb-3"><strong>Description:</strong><br><p>{{ auction.auction_description|linebreaks }}</p></div>
+
+                <div class="alert alert-info">
+                    <div class="row">
+                        <div class="col-md-4"><strong>Reserve Price:</strong><h4 class="text-success" id="reservePrice">₹{{ auction.reserve_price|floatformat:2 }}</h4></div>
+                        <div class="col-md-4"><strong>Current Highest Bid:</strong><h4 class="text-primary" id="currentHighestBid">{% if auction.current_highest_bid %}₹{{ auction.current_highest_bid|floatformat:2 }}{% else %}₹{{ auction.reserve_price|floatformat:2 }}{% endif %}</h4></div>
+                        <div class="col-md-4"><strong>Minimum Increment:</strong><h4 class="text-warning">₹{{ auction.minimum_increment_amount|floatformat:2 }}</h4></div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <div class="row"><div class="col-md-6"><strong>Auction End:</strong><br>{{ auction.auction_end_time|date:"d M Y, H:i" }}</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bid History -->
+        <div class="card">
+            <div class="card-header"><i class="fas fa-history"></i> Bid History</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr><th>Bidder</th><th>Bid Amount</th><th>Time</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="bidsTableBody">
+                            <td><td colspan="4" class="text-center">Loading bids...<\/td><\/tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Place Bid Section -->
+        {% if auction.auction_status == 'LIVE' %}
+            {% if user.is_authenticated %}
+                {% if user.role in 'BIDDER,CONTRACTOR' %}
+                    {% if auction.created_by.id != user.id %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white"><i class="fas fa-gavel"></i> Place Your Bid</div>
+                            <div class="card-body">
+                                <div id="bidError" class="alert alert-danger d-none"></div>
+                                <div id="bidSuccess" class="alert alert-success d-none"></div>
+                                <div class="mb-3">
+                                    <label class="form-label">Your Bid Amount (₹)</label>
+                                    <input type="number" id="bidAmount" class="form-control form-control-lg" step="1" required>
+                                    <small class="text-muted" id="minBidHint">Loading...</small>
+                                </div>
+                                <button class="btn btn-success w-100 btn-lg" id="placeBidBtn">
+                                    <i class="fas fa-paper-plane"></i> Place Bid
+                                </button>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-warning"><i class="fas fa-exclamation-triangle"></i> Cannot Bid</div>
+                            <div class="card-body text-center">
+                                <p>You cannot bid on your own auction.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning"><i class="fas fa-exclamation-triangle"></i> Not Authorized</div>
+                        <div class="card-body text-center">
+                            <p>Only bidders and contractors can place bids.</p>
+                            <a href="/dashboard/" class="btn btn-primary">Go to Dashboard</a>
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="card mb-4">
+                    <div class="card-header bg-warning"><i class="fas fa-sign-in-alt"></i> Login Required</div>
+                    <div class="card-body text-center">
+                        <p>Please login to place a bid.</p>
+                        <a href="/login/" class="btn btn-primary">Login Now</a>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white"><i class="fas fa-info-circle"></i> Auction Status</div>
+                <div class="card-body text-center">
+                    <p>This auction is not available for bidding.</p>
+                    {% if auction.auction_status == 'UPCOMING' %}
+                        <small>Starts on: {{ auction.auction_start_time|date:"d M Y, H:i" }}</small>
+                    {% elif auction.auction_status == 'ENDED' %}
+                        <small>Auction has ended</small>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Timer -->
+        <div class="card">
+            <div class="card-header bg-danger text-white"><i class="fas fa-hourglass-half"></i> Time Remaining</div>
+            <div class="card-body text-center">
+                <div id="timer" class="display-4 fw-bold">--</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+(function() {
+    // Auction data from Django template
+    var auctionId = {{ auction.id }};
+    var reservePrice = parseFloat('{{ auction.reserve_price }}');
+    var increment = parseFloat('{{ auction.minimum_increment_amount }}');
+    var endTime = new Date('{{ auction.auction_end_time|date:"Y-m-d H:i:s" }}').getTime();
+    var currentUsername = '{{ user.username }}';
+    var auctionStatus = '{{ auction.auction_status }}';
+
+    console.log("Auction initialized:", {
+        auctionId: auctionId,
+        reservePrice: reservePrice,
+        increment: increment,
+        auctionStatus: auctionStatus
+    });
+
+    // Helper: Get CSRF token
+    function getCsrfToken() {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Format currency
+    function formatCurrency(amount) {
+        return '₹' + amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Update minimum bid hint
+    function updateMinBidHint(currentHighest) {
+        var minBid = currentHighest + increment;
+        $('#minBidHint').text('Minimum bid: ' + formatCurrency(minBid) + ' (Current highest ' + formatCurrency(currentHighest) + ' + increment ' + formatCurrency(increment) + ')');
+        $('#bidAmount').attr('min', minBid);
+        $('#bidAmount').attr('placeholder', 'Minimum ' + formatCurrency(minBid));
+    }
+
+    // Load bids
+    function loadBids() {
+        if (auctionStatus !== 'LIVE') {
+            $('#bidsTableBody').html('<tr><td colspan="4" class="text-center">Auction is not active<\/td><\/tr>');
+            return;
+        }
+        
+        $.ajax({
+            url: '/api/auctions/' + auctionId + '/bids/',
+            method: 'GET',
+            success: function(data) {
+                var tbody = $('#bidsTableBody');
+                tbody.empty();
+                
+                if (data.results && data.results.length > 0) {
+                    var userBid = null;
+                    for (var i = 0; i < data.results.length; i++) {
+                        var bid = data.results[i];
+                        var isCurrentUser = (bid.bidder_name === currentUsername);
+                        if (isCurrentUser) userBid = bid;
+                        var rowClass = (i === 0) ? 'table-success' : '';
+                        var statusBadge = (i === 0) ? '<span class="badge bg-success">Highest Bid</span>' : '<span class="badge bg-secondary">Outbid</span>';
+                        var row = '<tr class="' + rowClass + '">' +
+                            '<td><strong>' + escapeHtml(bid.bidder_name) + '</strong>' + (isCurrentUser ? ' <span class="badge bg-info">You</span>' : '') + '<\/td>' +
+                            '<td class="fw-bold ' + (i === 0 ? 'text-success' : 'text-muted') + '">' + formatCurrency(parseFloat(bid.bid_amount)) + '<\/td>' +
+                            '<td>' + new Date(bid.submitted_at).toLocaleString() + '<\/td>' +
+                            '<td>' + statusBadge + '<\/td>' +
+                            '<\/tr>';
+                        tbody.append(row);
+                    }
+                    
+                    var highestBid = parseFloat(data.results[0].bid_amount);
+                    $('#currentHighestBid').html(formatCurrency(highestBid));
+                    updateMinBidHint(highestBid);
+                    
+                    // If user already has a bid, show message but allow update
+                    if (userBid) {
+                        $('#bidError').removeClass('d-none').html('<i class="fas fa-info-circle"></i> You have already placed a bid of ' + formatCurrency(parseFloat(userBid.bid_amount)) + '. You can place a higher bid to update it.');
+                    }
+                } else {
+                    tbody.html('<tr><td colspan="4" class="text-center">No bids placed yet<\/td><\/tr>');
+                    $('#currentHighestBid').html(formatCurrency(reservePrice));
+                    updateMinBidHint(reservePrice);
+                    $('#bidError').addClass('d-none');
+                }
+            },
+            error: function() {
+                $('#bidsTableBody').html('<tr><td colspan="4" class="text-center text-danger">Error loading bids<\/td><\/tr>');
+            }
+        });
+    }
+
+    // Update timer
+    function updateTimer() {
+        var now = new Date().getTime();
+        var distance = endTime - now;
+        
+        if (distance < 0) {
+            $('#timer').text('Ended');
+            return;
+        }
+        
+        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        var timeString = '';
+        if (days > 0) timeString += days + 'd ';
+        if (hours > 0 || days > 0) timeString += hours + 'h ';
+        if (minutes > 0 || hours > 0 || days > 0) timeString += minutes + 'm ';
+        timeString += seconds + 's';
+        
+        $('#timer').text(timeString);
+    }
+
+    // Get current highest bid value
+    function getCurrentHighestBidValue() {
+        var text = $('#currentHighestBid').text();
+        var value = parseFloat(text.replace('₹', '').replace(/,/g, ''));
+        return isNaN(value) ? reservePrice : value;
+    }
+
+    // Place bid button click handler
+    $('#placeBidBtn').on('click', function(e) {
+        e.preventDefault();
+        
+        var amount = parseFloat($('#bidAmount').val());
+        var $error = $('#bidError');
+        var $success = $('#bidSuccess');
+        var $btn = $(this);
+        
+        $error.addClass('d-none');
+        $success.addClass('d-none');
+        
+        if (isNaN(amount) || amount <= 0) {
+            $error.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> Please enter a valid amount');
+            return;
+        }
+        
+        var currentHighest = getCurrentHighestBidValue();
+        var minAllowed = currentHighest + increment;
+        
+        if (amount <= currentHighest) {
+            $error.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> Bid must be higher than current highest bid of ' + formatCurrency(currentHighest));
+            return;
+        }
+        
+        if (amount < minAllowed) {
+            $error.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> Minimum bid allowed is ' + formatCurrency(minAllowed));
+            return;
+        }
+        
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Placing Bid...');
+        
+        $.ajax({
+            url: '/api/auctions/' + auctionId + '/bids/',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
+            data: JSON.stringify({ bid_amount: amount }),
+            success: function(response) {
+                $success.removeClass('d-none').html('<i class="fas fa-check-circle"></i> ' + (response.message || 'Bid placed successfully!'));
+                $('#bidAmount').val('');
+                setTimeout(function() { loadBids(); }, 500);
+                setTimeout(function() { $success.addClass('d-none'); }, 3000);
+            },
+            error: function(xhr) {
+                var errorMsg = 'Server error, please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                $error.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> ' + errorMsg);
+                $btn.prop('disabled', false);
+                $btn.html('<i class="fas fa-paper-plane"></i> Place Bid');
+            },
+            complete: function() {
+                if (!$('#bidAmount').prop('disabled')) {
+                    $btn.prop('disabled', false);
+                    $btn.html('<i class="fas fa-paper-plane"></i> Place Bid');
+                }
+            }
+        });
+    });
+
+    // Initialize page
+    $(document).ready(function() {
+        loadBids();
+        updateTimer();
+        setInterval(updateTimer, 1000);
+        setInterval(loadBids, 10000);
+    });
+})();
+</script>
+{% endblock %}

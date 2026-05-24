@@ -1,0 +1,136 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}Live Auctions - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Auctions</li>
+{% endblock %}
+
+{% block heading %}Live Land Auctions{% endblock %}
+
+{% block content %}
+<div class="row">
+    {% for auction in auctions %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 auction-card">
+            {% if auction.land.land_image %}
+            <img src="{{ auction.land.land_image.url }}" class="card-img-top" alt="{{ auction.auction_title }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                <i class="fas fa-map-marked-alt fa-4x text-white"></i>
+            </div>
+            {% endif %}
+            
+            <div class="card-body">
+                <h5 class="card-title">{{ auction.auction_title }}</h5>
+                <p class="card-text text-muted small">{{ auction.auction_description|truncatechars:100 }}</p>
+                
+                <div class="mb-2">
+                    <strong>Land:</strong> {{ auction.land.land_title }}
+                </div>
+                <div class="mb-2">
+                    <strong>Location:</strong> {{ auction.land.location }}, {{ auction.land.district }}
+                </div>
+                <div class="mb-2">
+                    <strong>Reserve Price:</strong> 
+                    <span class="text-success fw-bold">₹{{ auction.reserve_price|floatformat:2 }}</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Current Bid:</strong>
+                    <span class="text-primary fw-bold">
+                        {% if auction.current_highest_bid %}
+                            ₹{{ auction.current_highest_bid|floatformat:2 }}
+                        {% else %}
+                            No bids yet
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="mb-3">
+                    <strong>Time Left:</strong>
+                    <span class="countdown text-danger fw-bold" data-end="{{ auction.auction_end_time|date:'Y-m-d H:i:s' }}"></span>
+                </div>
+                
+                <div class="progress mb-3" style="height: 5px;">
+                    {% with total=auction.auction_end_time|timeuntil:auction.auction_start_time %}
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 75%"></div>
+                    {% endwith %}
+                </div>
+                
+                <span class="badge {% if auction.auction_status == 'LIVE' %}badge-live{% else %}badge-upcoming{% endif %} mb-3">
+                    {{ auction.get_auction_status_display }}
+                </span>
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{% url 'auction-detail-web' auction.slug %}" class="btn btn-primary w-100">
+                    <i class="fas fa-gavel"></i> Place Bid
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle"></i> No live auctions at the moment. Please check back later.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if auctions.has_other_pages %}
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+        {% if auctions.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ auctions.previous_page_number }}">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in auctions.paginator.page_range %}
+            {% if auctions.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > auctions.number|add:'-3' and num < auctions.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if auctions.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ auctions.next_page_number }}">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<script>
+function updateCountdown() {
+    $('.countdown').each(function() {
+        const endTime = new Date($(this).data('end')).getTime();
+        const now = new Date().getTime();
+        const distance = endTime - now;
+        
+        if (distance < 0) {
+            $(this).html('Ended');
+            return;
+        }
+        
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        $(this).html(`${hours}h ${minutes}m ${seconds}s`);
+    });
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}Tenders - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Tenders</li>
+{% endblock %}
+
+{% block heading %}Government Tenders{% endblock %}
+
+{% block header_actions %}
+<a href="{% if user.is_authenticated and user.role != 'PUBLIC_VIEWER' %}/api/tenders/export/csv/{% else %}#{% endif %}" 
+   class="btn btn-success" {% if not user.is_authenticated or user.role == 'PUBLIC_VIEWER' %}onclick="showToast('Please login to export', 'warning'); return false;"{% endif %}>
+    <i class="fas fa-download"></i> Export CSV
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Search Filters Sidebar -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-filter"></i> Filter Tenders
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'tender-list-web' %}">
+                    <div class="mb-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" name="query" class="form-control" placeholder="Search by title..." value="{{ request.GET.query }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select name="department" class="form-select">
+                            <option value="">All Departments</option>
+                            {% for dept in form.fields.department.queryset %}
+                            <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                                {{ dept.department_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="OPEN" {% if request.GET.status == 'OPEN' %}selected{% endif %}>Open</option>
+                            <option value="CLOSED" {% if request.GET.status == 'CLOSED' %}selected{% endif %}>Closed</option>
+                            <option value="AWARDED" {% if request.GET.status == 'AWARDED' %}selected{% endif %}>Awarded</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Min Budget (₹)</label>
+                        <input type="number" name="min_budget" class="form-control" value="{{ request.GET.min_budget }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Max Budget (₹)</label>
+                        <input type="number" name="max_budget" class="form-control" value="{{ request.GET.max_budget }}">
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="active_only" class="form-check-input" id="activeOnly" {% if request.GET.active_only %}checked{% endif %}>
+                        <label class="form-check-label" for="activeOnly">Show Active Only</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'tender-list-web' %}" class="btn btn-secondary w-100 mt-2">
+                        <i class="fas fa-undo"></i> Clear Filters
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tenders List -->
+    <div class="col-md-9">
+        <div class="row">
+            {% for tender in tenders %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ tender.title|truncatechars:50 }}</h5>
+                        <p class="card-text text-muted small">{{ tender.description|truncatechars:100 }}</p>
+                        
+                        <div class="mb-2">
+                            <strong>Department:</strong> {{ tender.department.department_name }}
+                        </div>
+                        <div class="mb-2">
+                            <strong>Budget:</strong> ₹{{ tender.project_budget|floatformat:2 }}
+                        </div>
+                        <div class="mb-2">
+                            <strong>EMD:</strong> ₹{{ tender.earnest_money_deposit|floatformat:2 }}
+                        </div>
+                        <div class="mb-2">
+                            <strong>Deadline:</strong> {{ tender.end_date|date:"d M Y, H:i" }}
+                        </div>
+                        <div class="mb-3">
+                            <span class="badge {% if tender.tender_status == 'OPEN' %}badge-open{% elif tender.tender_status == 'CLOSED' %}badge-closed{% else %}badge-ended{% endif %}">
+                                {{ tender.get_tender_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{% url 'tender-detail-web' tender.slug %}" class="btn btn-primary w-100">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle"></i> No tenders found matching your criteria.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if tenders.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if tenders.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tenders.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in tenders.paginator.page_range %}
+                    {% if tenders.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > tenders.number|add:'-3' and num < tenders.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if tenders.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tenders.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

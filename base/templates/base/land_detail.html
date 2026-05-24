@@ -1,0 +1,167 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}{{ land.land_title }} - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'land-list-web' %}">Land Records</a></li>
+<li class="breadcrumb-item active">{{ land.land_title|truncatechars:50 }}</li>
+{% endblock %}
+
+{% block heading %}{{ land.land_title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Land Images -->
+        {% if land.land_image %}
+        <div class="card mb-4">
+            <img src="{{ land.land_image.url }}" class="card-img-top" alt="{{ land.land_title }}">
+        </div>
+        {% endif %}
+        
+        <!-- Land Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> Property Details
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Survey Number:</strong><br>
+                        {{ land.survey_number }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Category:</strong><br>
+                        {{ land.category.category_name }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Total Area:</strong><br>
+                        {{ land.total_area }} {{ land.area_unit }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Market Value:</strong><br>
+                        <span class="text-success fw-bold">₹{{ land.market_value|floatformat:2 }}</span>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Location:</strong><br>
+                        {{ land.location }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>District:</strong><br>
+                        {{ land.district }}, {{ land.state }}
+                    </div>
+                </div>
+                
+                {% if land.latitude and land.longitude %}
+                <div class="mb-3">
+                    <strong>Coordinates:</strong><br>
+                    Latitude: {{ land.latitude }}, Longitude: {{ land.longitude }}
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <strong>Status:</strong><br>
+                    <span class="badge {% if land.status == 'AVAILABLE' %}badge-open{% elif land.status == 'UNDER_AUCTION' %}badge-live{% else %}badge-ended{% endif %} fs-6 p-2">
+                        {{ land.get_status_display }}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Description:</strong><br>
+                    <p>{{ land.land_description|linebreaks }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Ownership Details:</strong><br>
+                    <p>{{ land.ownership_details|linebreaks }}</p>
+                </div>
+                
+                {% if land.zoning_information %}
+                <div class="mb-3">
+                    <strong>Zoning Information:</strong><br>
+                    <p>{{ land.zoning_information|linebreaks }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-cog"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                {% if land.status == 'AVAILABLE' %}
+                    <p>This land is available for auction or direct sale.</p>
+                    <button class="btn btn-success w-100 mb-2" onclick="showToast('Feature coming soon!', 'info')">
+                        <i class="fas fa-gavel"></i> Request Auction
+                    </button>
+                    <button class="btn btn-info w-100" onclick="showToast('Feature coming soon!', 'info')">
+                        <i class="fas fa-file-contract"></i> Request Lease
+                    </button>
+                {% elif land.status == 'UNDER_AUCTION' %}
+                    <p>This land is currently under auction.</p>
+                    <a href="/auctions/" class="btn btn-primary w-100">
+                        <i class="fas fa-gavel"></i> View Active Auctions
+                    </a>
+                {% else %}
+                    <p>This land is no longer available.</p>
+                    <div class="alert alert-info">
+                        <strong>Status:</strong> {{ land.get_status_display }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Land Information Card -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-chart-line"></i> Property Information
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <strong>Added on:</strong><br>
+                        {{ land.created_at|date:"d M Y" }}
+                    </li>
+                    <li class="mb-2">
+                        <strong>Last Updated:</strong><br>
+                        {{ land.updated_at|date:"d M Y" }}
+                    </li>
+                    <li>
+                        <strong>Area Unit:</strong><br>
+                        {{ land.area_unit }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Related Auctions -->
+        {% if land.auctions.exists %}
+        <div class="card mt-4">
+            <div class="card-header bg-warning">
+                <i class="fas fa-gavel"></i> Related Auctions
+            </div>
+            <div class="card-body">
+                {% for auction in land.auctions.all|slice:":3" %}
+                <div class="mb-2">
+                    <a href="{% url 'auction-detail-web' auction.slug %}">{{ auction.auction_title }}</a>
+                    <br>
+                    <small class="text-muted">Status: {{ auction.get_auction_status_display }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

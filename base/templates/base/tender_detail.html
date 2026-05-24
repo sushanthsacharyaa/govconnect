@@ -1,0 +1,243 @@
+{% extends 'base/main.html' %}
+{% load static %}
+
+{% block title %}{{ tender.title }} - GovConnect{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'tender-list-web' %}">Tenders</a></li>
+<li class="breadcrumb-item active">{{ tender.title|truncatechars:50 }}</li>
+{% endblock %}
+
+{% block heading %}{{ tender.title }}{% endblock %}
+
+{% block header_actions %}
+{% if user.is_authenticated and user.role in 'BIDDER,CONTRACTOR' and tender.tender_status == 'OPEN' %}
+<button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#applyModal">
+    <i class="fas fa-paper-plane"></i> Apply for Tender
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Tender Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> Tender Details
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Tender ID:</strong><br>
+                        {{ tender.tender_id }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Department:</strong><br>
+                        {{ tender.department.department_name }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Project Budget:</strong><br>
+                        <span class="text-success fw-bold">₹{{ tender.project_budget|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Earnest Money Deposit (EMD):</strong><br>
+                        ₹{{ tender.earnest_money_deposit|floatformat:2 }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Start Date:</strong><br>
+                        {{ tender.start_date|date:"d M Y, H:i" }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>End Date:</strong><br>
+                        {{ tender.end_date|date:"d M Y, H:i" }}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Status:</strong><br>
+                    <span class="badge {% if tender.tender_status == 'OPEN' %}badge-open{% elif tender.tender_status == 'CLOSED' %}badge-closed{% else %}badge-ended{% endif %}">
+                        {{ tender.get_tender_status_display }}
+                    </span>
+                    {% if tender.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-danger">Expired</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Description:</strong><br>
+                    <p>{{ tender.description|linebreaks }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Eligibility Criteria:</strong><br>
+                    <p>{{ tender.eligibility_criteria|linebreaks }}</p>
+                </div>
+                
+                {% if tender.tender_document %}
+                <div class="mb-3">
+                    <strong>Tender Document:</strong><br>
+                    <a href="{{ tender.tender_document.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                        <i class="fas fa-download"></i> Download Tender Document
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Important Information -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <i class="fas fa-exclamation-triangle"></i> Important Information
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-calendar-alt text-danger"></i>
+                        <strong>Submission Deadline:</strong><br>
+                        {{ tender.end_date|date:"d M Y, H:i" }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-rupee-sign text-success"></i>
+                        <strong>EMD Amount:</strong><br>
+                        ₹{{ tender.earnest_money_deposit|floatformat:2 }}
+                    </li>
+                    <li>
+                        <i class="fas fa-clock text-info"></i>
+                        <strong>Time Remaining:</strong><br>
+                        {% if tender.is_active %}
+                            <span class="countdown" data-end="{{ tender.end_date|date:'Y-m-d H:i:s' }}"></span>
+                        {% else %}
+                            <span class="text-danger">Closed</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Published By -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user"></i> Published By
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <i class="fas fa-user-circle fa-3x text-muted mb-2"></i>
+                    <h6>{{ tender.published_by.get_full_name|default:tender.published_by.username }}</h6>
+                    <small class="text-muted">Published on: {{ tender.created_at|date:"d M Y" }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply Modal -->
+{% if user.is_authenticated and tender.tender_status == 'OPEN' %}
+<div class="modal fade" id="applyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-paper-plane"></i> Apply for Tender</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="applyForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        To apply for this tender, you need to pay the EMD amount of <strong>₹{{ tender.earnest_money_deposit|floatformat:2 }}</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Select Payment Method</label>
+                        <select class="form-select" name="payment_method" required>
+                            <option value="online">Online Payment</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="demand_draft">Demand Draft</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="termsCheck" required>
+                        <label class="form-check-label" for="termsCheck">
+                            I confirm that I meet all eligibility criteria and the information provided is accurate.
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Proceed to Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#applyForm').on('submit', function(e) {
+        e.preventDefault();
+        if (!$('#termsCheck').is(':checked')) {
+            showToast('Please accept the terms and conditions', 'warning');
+            return;
+        }
+        
+        // Create payment
+        $.ajax({
+            url: '/api/payments/',
+            method: 'POST',
+            data: {
+                amount: '{{ tender.earnest_money_deposit }}',
+                payment_type: 'EMD',
+                reference_id: 'TENDER_{{ tender.id }}'
+            },
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                showToast('Application submitted successfully!', 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            },
+            error: function(xhr) {
+                showToast('Failed to process application', 'danger');
+            }
+        });
+    });
+});
+
+// Countdown timer
+function updateCountdown() {
+    $('.countdown').each(function() {
+        const endTime = new Date($(this).data('end')).getTime();
+        const now = new Date().getTime();
+        const distance = endTime - now;
+        
+        if (distance < 0) {
+            $(this).html('<span class="text-danger">Expired</span>');
+            return;
+        }
+        
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        $(this).html(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    });
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+</script>
+{% endif %}
+{% endblock %}
