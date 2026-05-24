@@ -44,3 +44,11 @@ python manage.py createsuperuser
 
 # Run server
 python manage.py runserver
+
+Demo Credentials
+Admin: admin / admin123
+
+Bidder: bidder_mohan / bidder123
+
+Author
+Your Name
